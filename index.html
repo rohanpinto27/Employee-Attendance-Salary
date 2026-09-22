@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Attendance & Salary Management System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Navbar Header -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-brand-600 p-2 rounded-lg text-white">
+                        <i class="fa-solid fa-users-gear text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight">Employee Manager</h1>
+                        <p class="text-xs text-slate-400">Attendance & Salary Management System</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="/api/export/csv" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium transition duration-150 flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-file-csv"></i>
+                        <span>Export CSV</span>
+                    </a>
+                    <button id="btnOpenAddModal" class="bg-brand-600 hover:bg-brand-700 text-white px-3.5 py-1.5 rounded-lg text-sm font-medium transition duration-150 flex items-center space-x-2 shadow-sm">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add Employee</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI Metrics Summary Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Card 1: Total Employees -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center space-x-4">
+                <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl">
+                    <i class="fa-solid fa-user-group text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Employees</p>
+                    <h3 id="statTotalEmployees" class="text-2xl font-extrabold text-slate-800">--</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Active workforce count</p>
+                </div>
+            </div>
+
+            <!-- Card 2: Total Payroll Outflow -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center space-x-4">
+                <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                    <i class="fa-solid fa-money-bill-wave text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Payroll</p>
+                    <h3 id="statTotalPayroll" class="text-2xl font-extrabold text-slate-800">Rs. 0</h3>
+                    <p class="text-xs text-emerald-600 font-medium mt-0.5" id="statOvertimeShare">OT: Rs. 0</p>
+                </div>
+            </div>
+
+            <!-- Card 3: Average Attendance Rate -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center space-x-4">
+                <div class="p-3.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <i class="fa-solid fa-calendar-check text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Avg Attendance</p>
+                    <h3 id="statAvgAttendance" class="text-2xl font-extrabold text-slate-800">0%</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Across all staff</p>
+                </div>
+            </div>
+
+            <!-- Card 4: Low Attendance Flag -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex items-center space-x-4">
+                <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl">
+                    <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Below Threshold (&lt;75%)</p>
+                    <h3 id="statLowAttendance" class="text-2xl font-extrabold text-amber-600">0</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Needs evaluation</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs & Actions -->
+        <div class="border-b border-slate-200 flex justify-between items-center">
+            <nav class="flex space-x-6" aria-label="Tabs">
+                <button id="tabBtnDirectory" class="tab-link border-brand-600 text-brand-600 py-3 px-1 border-b-2 font-semibold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>Employee Directory</span>
+                </button>
+                <button id="tabBtnCalculator" class="tab-link border-transparent text-slate-500 hover:text-slate-700 py-3 px-1 border-b-2 font-semibold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-calculator"></i>
+                    <span>Quick Calculator</span>
+                </button>
+                <button id="tabBtnAnalytics" class="tab-link border-transparent text-slate-500 hover:text-slate-700 py-3 px-1 border-b-2 font-semibold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Analytics & Charts</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- TAB 1: EMPLOYEE DIRECTORY -->
+        <section id="tabContentDirectory" class="tab-content space-y-4">
+            <!-- Filter & Search Toolbar -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="relative flex-grow w-full md:w-auto">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search employee by name..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none">
+                </div>
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <label for="statusFilter" class="text-xs font-semibold text-slate-500 uppercase whitespace-nowrap">Filter Status:</label>
+                    <select id="statusFilter" class="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-brand-500 outline-none w-full md:w-auto">
+                        <option value="">All Statuses</option>
+                        <option value="Attendance OK">Attendance OK (>=75%)</option>
+                        <option value="Below Attendance Threshold">Below Threshold (<75%)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Employees Data Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100/75 border-b border-slate-200 text-xs font-bold uppercase text-slate-600 tracking-wider">
+                                <th class="px-5 py-3.5">ID</th>
+                                <th class="px-5 py-3.5">Employee Name</th>
+                                <th class="px-5 py-3.5">Basic Salary</th>
+                                <th class="px-5 py-3.5">Attendance</th>
+                                <th class="px-5 py-3.5">Overtime (Hrs/Pay)</th>
+                                <th class="px-5 py-3.5">Final Salary</th>
+                                <th class="px-5 py-3.5">Status</th>
+                                <th class="px-5 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically via app.js -->
+                            <tr>
+                                <td colspan="8" class="text-center py-8 text-slate-400">Loading records...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: QUICK CALCULATOR -->
+        <section id="tabContentCalculator" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Calculator Form -->
+                <div class="lg:col-span-7 bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                    <div class="border-b border-slate-100 pb-3">
+                        <h2 class="text-lg font-bold text-slate-800">Quick Salary & Attendance Calculator</h2>
+                        <p class="text-xs text-slate-500">Test formulas interactively without creating a database entry</p>
+                    </div>
+                    <form id="calcForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Employee Name (Optional)</label>
+                            <input type="text" id="calcName" placeholder="e.g. John Doe" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Basic Salary (Rs.)</label>
+                                <input type="number" id="calcBasic" value="50000" min="0" step="100" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Overtime Rate (Rs./hr)</label>
+                                <input type="number" id="calcOtRate" value="250" min="0" step="10" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Total Working Days</label>
+                                <input type="number" id="calcTotalDays" value="22" min="1" max="31" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Present Days</label>
+                                <input type="number" id="calcPresentDays" value="20" min="0" max="31" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Overtime Hours</label>
+                                <input type="number" id="calcOtHours" value="10" min="0" step="0.5" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="pt-2">
+                            <button type="button" id="btnSaveFromCalc" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition duration-150 flex items-center space-x-2">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Save As Employee Record</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Calculator Live Result Card -->
+                <div class="lg:col-span-5 bg-slate-900 text-white p-6 rounded-xl shadow-lg flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <span class="text-xs uppercase font-bold tracking-widest text-slate-400">Calculation Summary</span>
+                            <span id="calcStatusBadge" class="bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full text-xs font-semibold border border-emerald-500/30">Attendance OK</span>
+                        </div>
+                        <div class="mt-4 space-y-3">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-400">Employee Name:</span>
+                                <span id="resCalcName" class="font-semibold text-white">John Doe</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-400">Basic Salary:</span>
+                                <span id="resCalcBasic" class="font-semibold text-white">Rs. 50,000.00</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-400">Attendance Percentage:</span>
+                                <span id="resCalcAttendance" class="font-semibold text-brand-400">90.91%</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-400">Overtime Earnings:</span>
+                                <span id="resCalcOvertime" class="font-semibold text-emerald-400">Rs. 2,500.00</span>
+                            </div>
+                            <hr class="border-slate-800 my-2">
+                            <div class="flex justify-between items-center pt-1">
+                                <span class="text-base font-bold text-slate-300">Final Salary:</span>
+                                <span id="resCalcFinal" class="text-2xl font-black text-white">Rs. 52,500.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 bg-slate-800/80 p-3.5 rounded-lg border border-slate-700/60 text-xs text-slate-400 space-y-1">
+                        <p><i class="fa-solid fa-circle-info text-brand-400 mr-1"></i> <strong>Formula Details:</strong></p>
+                        <p>• Attendance: (20 / 22) × 100 = 90.91%</p>
+                        <p>• Overtime Pay: 10 hrs × Rs. 250 = Rs. 2,500.00</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: ANALYTICS & CHARTS -->
+        <section id="tabContentAnalytics" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: Salary Breakdown -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-column text-brand-600"></i>
+                        <span>Basic Salary vs Overtime Pay (Per Employee)</span>
+                    </h3>
+                    <div class="relative h-64">
+                        <canvas id="chartSalaryBreakdown"></canvas>
+                    </div>
+                </div>
+                <!-- Chart 2: Attendance Status -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-base font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+                        <span>Attendance Threshold Compliance</span>
+                    </h3>
+                    <div class="relative h-64 flex justify-center items-center">
+                        <canvas id="chartAttendanceStatus"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            Employee Attendance & Salary Management System • Full-Stack Python Flask & Web UI
+        </div>
+    </footer>
+
+    <!-- ADD / EDIT EMPLOYEE MODAL -->
+    <div id="employeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 transform transition-all">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-bold">Add New Employee</h3>
+                <button id="btnCloseModal" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="modalForm" class="p-6 space-y-4">
+                <input type="hidden" id="modalEmployeeId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Employee Name *</label>
+                    <input type="text" id="modalName" required placeholder="e.g. Jane Smith" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Basic Salary (Rs.) *</label>
+                        <input type="number" id="modalBasic" required min="0" step="100" placeholder="50000" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Overtime Rate (Rs./hr)</label>
+                        <input type="number" id="modalOtRate" min="0" step="10" value="250" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Total Days *</label>
+                        <input type="number" id="modalTotalDays" required min="1" max="31" value="22" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Present Days *</label>
+                        <input type="number" id="modalPresentDays" required min="0" max="31" value="20" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">OT Hours</label>
+                        <input type="number" id="modalOtHours" min="0" step="0.5" value="0" class="w-full px-3.5 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Live calculation preview in modal -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
+                    <div class="flex justify-between">
+                        <span>Estimated Attendance:</span>
+                        <span id="modalEstAttendance" class="font-bold text-slate-800">--%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Estimated Overtime Pay:</span>
+                        <span id="modalEstOtPay" class="font-bold text-slate-800">Rs. 0.00</span>
+                    </div>
+                    <div class="flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-900">
+                        <span>Estimated Final Salary:</span>
+                        <span id="modalEstFinalSalary" class="text-brand-600">Rs. 0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" id="btnCancelModal" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+                    <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition shadow-sm">Save Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2"></div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
